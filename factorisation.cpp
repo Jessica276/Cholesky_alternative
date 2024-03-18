@@ -5,41 +5,33 @@
 
 using namespace std;
 
-typedef vector<float> Vector;
+typedef vector<double> Vector;
 typedef vector<Vector> Matrix;
 
 class Factorisation{
     private:
         Matrix A;
         Vector b; //second membre
-        Matrix D,L;
-
+        Vector D; //pour stocker les éléments diagonaux de la matrice L
         int n;
         
     public:
         Factorisation();
-        ~Factorisation();
         void displayMatrix(Matrix M);
         void displayVector(Vector V);
         void initializeData();
         Matrix get_matrix();
         Vector get_vector();
         Vector get_solution();
+        Vector get_diag();
         Vector solution;
-        // Decomposition LDL(transpose)
         void decomposition();
-        void diagonal();
-        // Resolution par Gauss-Seidel
         void lower_resolution();
         void upper_resolution();
 };
 
 Factorisation::Factorisation(){
     this->initializeData();
-}
-
-Factorisation::~Factorisation(){
-    cout<<endl;
 }
 
 Matrix Factorisation::get_matrix(){
@@ -49,9 +41,14 @@ Matrix Factorisation::get_matrix(){
 Vector Factorisation::get_vector(){
     return this->b;
 }
+
+Vector Factorisation::get_diag(){
+    return this->D;
+}
+
 void Factorisation::displayMatrix(Matrix M){
     for(int i=0;i<int(M.size());i++){
-        for(int j=0;j<int(M.size());j++){
+        for(int j=0;j<int(M[i].size());j++){
             cout<<M[i][j]<<"    ";
         }
         cout<<endl;
@@ -66,87 +63,74 @@ void Factorisation::displayVector(Vector V){
 }
 
 void Factorisation::initializeData(){
-
-
     ifstream file("data.txt");
-
     if(file){
-        file>>this->n;
-
+        file >> this->n;
         for(int i=0;i<this->n;i++){
             Vector temp;
             for(int j=0;j<this->n;j++){
-                float element;
+                double element;
                 file>>element;
                 temp.push_back(element);
             }
             A.push_back(temp);
         }
-
         for(int j=0;j<this->n;j++){
-            float element;
+            double element;
             file>>element;
             this->b.push_back(element);
         }
-        // initialiser la variable Solution en 0
+        D.resize(n);
         for(int i=0;i<this->n;i++){
             this->solution.push_back(0.0);
         }
         file.close();
     }
-
     else{
         cout<<"Erreur d'ouverture du fichier"<<endl;
     }
 }
 
 void Factorisation::decomposition(){
-    float somme;
-
     for(int i=0;i<int(A.size());i++){
-        for(int j=0;j<int(A.size());j++){
-            for(int k=0;k<j;k++){
-                somme +=  this->A[i][k] * this->A[k][k] * this->A[j][k];
-            }
-            this->A[i][j] = 1.0/(this->A[j][j]) * (this->A[i][j] - somme);
-            somme = 0;
-        }
+        double sum = A[i][i];
         for(int k=0;k<i;k++){
-            somme += this->A[k][k] * pow(this->A[i][k],2);
+            sum -= A[i][k]*A[i][k]*D[k];
         }
-        this->A[i][i] -= somme;
-        somme = 0;
+        if(sum <= 0){
+            cout << "La matrice n est pas definie positive." << endl;
+            break;
+        }
+        D[i] = sum;
+        for(int j=i+1;j<int(A.size());j++){
+            sum = A[j][i];
+            for(int k=0;k<i;k++){
+                sum -= A[j][k]*A[i][k]*D[k];
+            }
+            A[j][i] = sum / D[i];
+        }
     }
 }
 
 void Factorisation::lower_resolution(){
-    float somme = 0;
     for(int i=0;i<this->n;i++){
-        somme = 0;
+        double sum = 0;
         for(int j=0;j<i;j++){
-            somme += this->A[i][j]* this->solution[j];
+            sum += this->A[i][j] * this->solution[j];
         }
-        this->solution[i] = (this->b[i] - somme);
-    }
-}
-
-void Factorisation::diagonal(){
-    for (int i = 0; i < this->n; i++){
-        this->solution[i] /= this->A[i][i];
+        this->solution[i] = (this->b[i] - sum);
     }
 }
 
 void Factorisation::upper_resolution(){
-    float somme = 0;
-    for (int i = this->n - 1; i >= 0; i--){
-        somme = 0;
-        for (int j = i + 1; j < this->n; j++){
-            somme += this->A[j][i] * this->solution[j];
+    for(int i=this->n-1;i>=0;i--){
+        double sum = 0;
+        for(int j=i+1;j<this->n;j++){
+            sum += this->A[j][i] * this->solution[j];
         }
-        this->solution[i] = ((this->solution[i] - somme));
+        this->solution[i] = (this->solution[i] - sum) / D[i];
     }
 }
-
 
 int main(){
     Factorisation f;
@@ -155,12 +139,14 @@ int main(){
     cout<<"Second membre :"<<endl;
     f.displayVector(f.get_vector());
     f.decomposition();
-    cout<<"On obtient alors LDL^t:\n";
-    f.displayMatrix(f.get_matrix());
+    // cout<<"\n\nOn obtient alors la decomposition LDL^t :\n";
+    // cout<<"D :"<<endl;
+    // f.displayVector(f.get_diag());
+    // cout<<"L :"<<endl;
+    // f.displayMatrix(f.get_matrix());
     f.lower_resolution();
-    f.diagonal();
     f.upper_resolution();
-    cout<<"Solutions :"<<endl;
+    cout<<"\nLa solution :"<<endl;
     f.displayVector(f.solution);
     return(0);
 }
