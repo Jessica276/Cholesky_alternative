@@ -5,7 +5,7 @@
 
 using namespace std;
 
-typedef vector<double> Vector;
+typedef vector<float> Vector;
 typedef vector<Vector> Matrix;
 
 class Factorisation{
@@ -69,14 +69,14 @@ void Factorisation::initializeData(){
         for(int i=0;i<this->n;i++){
             Vector temp;
             for(int j=0;j<this->n;j++){
-                double element;
+                float element;
                 file>>element;
                 temp.push_back(element);
             }
             A.push_back(temp);
         }
         for(int j=0;j<this->n;j++){
-            double element;
+            float element;
             file>>element;
             this->b.push_back(element);
         }
@@ -93,7 +93,7 @@ void Factorisation::initializeData(){
 
 void Factorisation::decomposition(){
     for(int i=0;i<int(A.size());i++){
-        double sum = A[i][i];
+        float sum = A[i][i];
         for(int k=0;k<i;k++){
             sum -= A[i][k]*A[i][k]*D[k];
         }
@@ -114,7 +114,7 @@ void Factorisation::decomposition(){
 
 void Factorisation::lower_resolution(){
     for(int i=0;i<this->n;i++){
-        double sum = 0;
+        float sum = 0;
         for(int j=0;j<i;j++){
             sum += this->A[i][j] * this->solution[j];
         }
@@ -124,11 +124,11 @@ void Factorisation::lower_resolution(){
 
 void Factorisation::upper_resolution(){
     for(int i=this->n-1;i>=0;i--){
-        double sum = 0;
+        float sum = 0;
         for(int j=i+1;j<this->n;j++){
             sum += this->A[j][i] * this->solution[j];
         }
-        this->solution[i] = (this->solution[i] - sum) / D[i];
+        this->solution[i] = round((this->solution[i] - sum) / D[i]);
     }
 }
 
@@ -139,14 +139,10 @@ int main(){
     cout<<"Second membre :"<<endl;
     f.displayVector(f.get_vector());
     f.decomposition();
-    // cout<<"\n\nOn obtient alors la decomposition LDL^t :\n";
-    // cout<<"D :"<<endl;
-    // f.displayVector(f.get_diag());
-    // cout<<"L :"<<endl;
-    // f.displayMatrix(f.get_matrix());
     f.lower_resolution();
     f.upper_resolution();
     cout<<"\nLa solution :"<<endl;
     f.displayVector(f.solution);
+    
     return(0);
 }
