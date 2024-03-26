@@ -33,7 +33,7 @@ class Profil{
         Vector get_li();
         Vector get_pi();
         Vector solution;
-        void decomposition();
+        void diagonal();
         void lower_resolution();
         void upper_resolution();
         void stockage();
@@ -88,7 +88,7 @@ void Profil::displayVector(Vector V){
 }
 
 void Profil::initializeData(){
-    ifstream file("data1.txt");
+    ifstream file("data.txt");
     if(file){
         file >> this->n;
         for(int i=0;i<this->n;i++){
@@ -116,51 +116,6 @@ void Profil::initializeData(){
     }
 }
 
-void Profil::decomposition(){
-    for(int i=0;i<int(A.size());i++){
-        float sum = A[i][i];
-        for(int k=0;k<i;k++){
-            sum -= A[i][k]*A[i][k]*D[k];
-        }
-        if(sum <= 0){
-            cout << "La matrice n est pas definie positive." << endl;
-            break;
-        }
-        D[i] = sum;
-        for(int j=i+1;j<int(A.size());j++){
-            sum = A[j][i];
-            for(int k=0;k<i;k++){
-                sum -= A[j][k]*A[i][k]*D[k];
-            }
-            A[j][i] = sum / D[i];
-        }
-    }
-}
-
-//Matrice triangulaire inférieur
-
-void Profil::lower_resolution(){
-    for(int i=0;i<this->n;i++){
-        float sum = 0;
-        for(int j=0;j<i;j++){
-            sum += this->A[i][j] * this->solution[j];
-        }
-        this->solution[i] = (this->b[i] - sum);
-    }
-}
-
-//Matrice triangulaire supérieur
-
-void Profil::upper_resolution(){
-    for(int i=this->n-1;i>=0;i--){
-        float sum = 0;
-        for(int j=i+1;j<this->n;j++){
-            sum += this->A[j][i] * this->solution[j];
-        }
-        this->solution[i] = round((this->solution[i] - sum) / D[i]);
-    }
-}
-
 void Profil::stockage(){
     int count = 1;
     for(int i=0;i<this->n;i++){
@@ -168,7 +123,7 @@ void Profil::stockage(){
         bool passage = false;
         for(int j=0;j<i+1;j++){ 
             auto element = this->A[i][j]; 
-            //Numérote le diagonal 
+            //Numerotation du diagonal 
             if(i==j){
                 this->nDiag.push_back(count);
             }
@@ -193,24 +148,65 @@ void Profil::stockage(){
         //Calcul de p[i] = i - l[i]
         this->pi.push_back(i + 1 - this->li[i]);
     }
+    cout<<"dimension :"<<nDiag.size();
+}
+
+void Profil::diagonal()
+{
+    float sum = 0;
+    for(int i=0; i<int(this->nDiag.size());i++){
+        for(int j=pi[i]; j<i;j++){
+            for(int k=pi[j];k<j;k++){
+                if(k>= pi[i])
+                    sum += this->APi.at(nDiag[i] - i + k) * this->APi.at(nDiag[k]) * this->APi.at(nDiag[j] - j + k);
+            }
+            APi[nDiag[i] - i + j] = 1.0 / this->APi.at(nDiag[j]) * (this->APi.at(nDiag[i] - i + j) - sum);
+            sum = 0;
+        }
+        for(int k=pi[i];k<i;k++){
+            sum += APi[nDiag[k]] * APi[nDiag[i] - i + k] * APi[nDiag[i] - i + k];
+        }
+        APi[nDiag[i]] -= sum;
+        sum = 0;
+    }
+}
+
+//Matrice triangulaire inférieur
+
+void Profil::lower_resolution(){
+    float sum = 0;
+    for(int i=0;i<int(this->nDiag.size());i++){
+        sum = 0;
+        for(int j=this->pi.at(i);j<i;j++)
+        {
+            sum += this->APi[nDiag[i] - i + j] * this->solution[j];
+        }
+        solution[i] = (this->b[i] - sum);
+    }
+}
+
+//Matrice triangulaire supérieur
+
+void Profil::upper_resolution(){
+    float sum = 0;
+    for(int i=0;i<int(this->nDiag.size());i++){
+        solution[i] /= this->APi[nDiag[i]];
+    }
+    for(int j=nDiag.size()-1;j>=0;j--){
+        sum = 0;
+        for(int i=j+1;i<int(this->nDiag.size());i++){
+            if(pi[i]<=j){
+                sum += APi[nDiag[i] - i + j] * solution[i];
+            }
+        }
+        this->solution[j] = ((this->solution[j] - sum));
+    }
 }
 
 int main(){
     Profil p;
     cout<<"Voici la matrice donnee :"<<endl;
     p.displayMatrix(p.get_matrix());
-    // cout<<"Second membre :"<<endl;
-    // p.displayVector(p.get_vector());
-    // p.decomposition();
-    // // cout<<endl;
-    // // cout<<"Diagonal :\n"<<endl;
-    // // p.displayVector(p.get_diag());
-    // p.lower_resolution();
-    // p.upper_resolution();
-    // cout<<endl;
-    // p.displayMatrix(p.get_matrix());
-    // cout<<"\nLa solution :"<<endl;
-    // p.displayVector(p.solution);
     p.stockage();
     cout<<"\nAPi : \n";
     p.displayVector(p.get_APi());
@@ -223,11 +219,10 @@ int main(){
     cout<<endl;
     cout<<"pi :\n";
     p.displayVector(p.get_pi());
-
-    p.decomposition();
+    cout<<"\n-----------------------\n";
+    p.diagonal();
     p.lower_resolution();
     p.upper_resolution();
-    cout<<"\n----------------"<<endl;
     p.displayVector(p.solution);
     
     
