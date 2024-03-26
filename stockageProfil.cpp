@@ -223,8 +223,9 @@ int main(){
     p.diagonal();
     p.lower_resolution();
     p.upper_resolution();
+    cout<<"La solution est :\n";
     p.displayVector(p.solution);
-    
+    cout<<endl;
     
 
 
